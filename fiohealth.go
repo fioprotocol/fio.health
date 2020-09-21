@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -60,7 +61,9 @@ type P2pResult struct {
 }
 
 func CombineReport(report FinalResult, files []string, path string) []FinalResult {
-	combined := []FinalResult{report}
+	combined := make([]FinalResult, len(files)+1)
+	combined[len(combined)-1] = report
+	sort.Strings(files)
 	for i := range files {
 		f, err := os.Open(path+string(os.PathSeparator)+files[i])
 		if err != nil {
@@ -79,7 +82,7 @@ func CombineReport(report FinalResult, files []string, path string) []FinalResul
 			log.Println(err)
 			continue
 		}
-		combined = append(combined, next)
+		combined[i] = next
 	}
 	return combined
 }

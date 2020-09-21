@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"log"
+	"sort"
 	"strings"
 )
 
@@ -84,7 +85,9 @@ func S3Put(s3Bucket string, s3File string, f []byte, region string) error {
 }
 
 func CombineS3Report(report FinalResult, files []string, bucket string, prefix string, region string) []FinalResult {
-	combined := []FinalResult{report}
+	combined := make([]FinalResult, len(files)+1)
+	combined[len(combined)-1] = report
+	sort.Strings(files)
 	for i := range files {
 		j, err := S3GetUrl("s3://"+bucket+"/"+prefix+"/"+files[i], region)
 		if err != nil {
@@ -97,7 +100,7 @@ func CombineS3Report(report FinalResult, files []string, bucket string, prefix s
 			log.Println(err)
 			continue
 		}
-		combined = append(combined, next)
+		combined[i] = next
 	}
 	return combined
 }
