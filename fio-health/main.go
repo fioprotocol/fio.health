@@ -204,7 +204,7 @@ func handler() error {
 						return err
 					}
 				}
-
+				combined = fiohealth.CombineReport(final, jIndex, conf.OutputDir+"/json")
 				j = mkJson(jIndex)
 			case "html":
 				if len(b) > 0 {
