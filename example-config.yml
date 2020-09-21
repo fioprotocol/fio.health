@@ -1,0 +1,25 @@
+---
+
+# Part of html title and header, keep it short:
+report_title: Testnet
+
+# hex string (without 0x), recognizes two special cases: mainnet or testnet
+chain_id: testnet
+
+# can be local, or s3://bucket/.... if using s3 also set region
+# output_dir: s3://....
+# region: us-east-1
+
+# local output
+output_dir: /var/www/html
+
+api_nodes:
+  - https://testnet.fio.dev
+  - https://testnet.fioprotocol.io
+
+p2p_nodes:
+  - dapixp2p-west.testnet.fioprotocol.io:3856
+  - dapixp2p-east.testnet.fioprotocol.io:3856
+  - testnet.fioprotocol.io:1987
+
+
