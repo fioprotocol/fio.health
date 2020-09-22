@@ -3,14 +3,14 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/eoscanada/eos-go"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/fioprotocol/fio-go"
+	"github.com/fioprotocol/fio-go/eos"
 	"github.com/fioprotocol/fio-go/eos/p2p"
 	fiohealth "github.com/fioprotocol/health"
 	"github.com/fioprotocol/health/fhassets"
@@ -597,7 +597,7 @@ func checkP2p(conf *Config) (report []fiohealth.P2pResult) {
 func getBlockP2p(p2pnode string, geo string, conf *Config) fiohealth.P2pResult {
 	started := time.Now().UTC()
 	r := fiohealth.P2pResult{Type: "p2p", Peer: p2pnode, FromGeo: geo, TimeStamp: time.Now().UTC().Unix()}
-	cid, err := hexutil.Decode("0x" + conf.ChainId)
+	cid, err := hex.DecodeString(conf.ChainId)
 	if err != nil {
 		log.Fatal(err)
 	}
