@@ -65,7 +65,7 @@ func CombineReport(report FinalResult, files []string, path string) []FinalResul
 	combined[len(combined)-1] = report
 	sort.Strings(files)
 	for i := range files {
-		f, err := os.Open(path+string(os.PathSeparator)+files[i])
+		f, err := os.Open(path + string(os.PathSeparator) + files[i])
 		if err != nil {
 			log.Println(err)
 			continue

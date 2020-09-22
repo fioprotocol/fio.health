@@ -32,8 +32,6 @@ func UnmarshalApiAlerts(b []byte) (ApiAlerts, error) {
 }
 
 func (aa *ApiAlerts) shouldAlarm(host string) bool {
-	aa.Lock()
-	defer aa.Unlock()
 	if aa.State[host] == nil || aa.State[host].sendAlarm {
 		return true
 	}
@@ -96,7 +94,7 @@ func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity string
 		aa.State[host].HealthAlarm = true
 		aa.State[host].HealthNotBefore = nb
 		if aa.State[host].HealthReason != "" {
-			aa.State[host].HealthReason = aa.State[host].HealthReason+"; "+why
+			aa.State[host].HealthReason = aa.State[host].HealthReason + "; " + why
 			return
 		}
 		aa.State[host].HealthReason = why
@@ -104,7 +102,7 @@ func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity string
 		aa.State[host].SecurityAlarm = true
 		aa.State[host].SecurityNotBefore = nb
 		if aa.State[host].SecurityReason != "" {
-			aa.State[host].SecurityReason = aa.State[host].SecurityReason+"; "+why
+			aa.State[host].SecurityReason = aa.State[host].SecurityReason + "; " + why
 			return
 		}
 		aa.State[host].SecurityReason = why
@@ -141,12 +139,10 @@ func UnmarshalP2pAlerts(b []byte) (P2pAlerts, error) {
 }
 
 func (pa *P2pAlerts) shouldAlarm(host string) bool {
-	pa.Lock()
-	defer pa.Unlock()
 	if pa.State[host] == nil {
 		return true
 	}
-	if pa.State[host].Alarm || time.Now().After(pa.State[host].NotBefore) {
+	if time.Now().Before(pa.State[host].NotBefore) {
 		return false
 	}
 	return true
@@ -172,7 +168,7 @@ func (pa *P2pAlerts) HostFailed(host string, reason string) (shouldAlert bool) {
 	pa.State[host].Alarm = true
 	pa.State[host].NotBefore = time.Now().Add(time.Hour)
 	if pa.State[host].Reason != "" {
-		pa.State[host].Reason = pa.State[host].Reason+"; " +reason
+		pa.State[host].Reason = pa.State[host].Reason + "; " + reason
 		return
 	}
 	pa.State[host].Reason = reason
@@ -196,5 +192,3 @@ func (pa *P2pAlerts) ToJson() ([]byte, error) {
 	defer pa.Unlock()
 	return json.MarshalIndent(pa, "", "  ")
 }
-
-

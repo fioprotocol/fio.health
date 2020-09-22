@@ -14,7 +14,7 @@ func getFiles(darkTheme bool) map[string]*string {
 			"tri.svg":           &TriSvgDark,
 			"chart.svg":         &ChartSvgDark,
 			"bootstrap.min.css": &BootstrapCssDark,
-			"chartv2.js":          &ChartJs,
+			"chartv2.js":        &ChartJs,
 		}
 	}
 	return map[string]*string{
@@ -24,7 +24,7 @@ func getFiles(darkTheme bool) map[string]*string {
 		"tri.svg":           &TriSvg,
 		"chart.svg":         &ChartSvg,
 		"bootstrap.min.css": &BootstrapCss,
-		"chartv2.js":          &ChartJs,
+		"chartv2.js":        &ChartJs,
 	}
 }
 

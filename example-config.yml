@@ -6,6 +6,9 @@ report_title: Testnet
 # hex string (without 0x), recognizes two special cases: mainnet or testnet
 chain_id: testnet
 
+# required only if using Telegram, base url for hyperlink
+base_uri: ""
+
 # can be local, or s3://bucket/.... if using s3 also set region
 # output_dir: s3://....
 # region: us-east-1

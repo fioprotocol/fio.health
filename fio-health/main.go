@@ -30,7 +30,7 @@ import (
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags|log.Lshortfile)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	if os.Getenv("LAMBDA_TASK_ROOT") != "" {
 		lambda.Start(handler)
 		return
@@ -102,7 +102,7 @@ func handler() error {
 			sort.Strings(payload.([]string))
 		case []History:
 			payload = append(payload.([]History), History{
-				File: nowStr +".html",
+				File: nowStr + ".html",
 				Date: nowFormat,
 				From: geo,
 				sort: nowInt,
@@ -117,6 +117,24 @@ func handler() error {
 		}
 		j, _ = json.MarshalIndent(payload, "", "  ")
 		return j
+	}
+
+	if conf.telegramKey != "" {
+		for _, alert := range conf.apiAlerts.GetAlarms() {
+			err = fiohealth.Notify(alert, conf.telegramKey, conf.BaseUrl)
+			if err != nil {
+				log.Println(err)
+				break
+			}
+		}
+
+		for _, alert := range conf.p2pAlerts.GetAlarms() {
+			err = fiohealth.Notify(alert, conf.telegramKey, conf.BaseUrl)
+			if err != nil {
+				log.Println(err)
+				break
+			}
+		}
 	}
 
 	combined := make([]fiohealth.FinalResult, 0)
@@ -135,7 +153,7 @@ func handler() error {
 					jIndex = make([]string, 0)
 				}
 				combined = fiohealth.CombineS3Report(final, jIndex, conf.bucket, conf.prefix+"/"+dir, conf.Region)
-				j  = mkJson(jIndex)
+				j = mkJson(jIndex)
 			default:
 				err = json.Unmarshal(fTemp, &hIndex)
 				if err != nil {
@@ -187,6 +205,24 @@ func handler() error {
 		if err != nil {
 			return err
 		}
+
+		j, err = conf.apiAlerts.ToJson()
+		if err != nil {
+			return err
+		}
+		err = fiohealth.S3Put(conf.bucket, conf.prefix+"/json/api_health.json", j, conf.Region)
+		if err != nil {
+			return err
+		}
+		j, err = conf.p2pAlerts.ToJson()
+		if err != nil {
+			return err
+		}
+		err = fiohealth.S3Put(conf.bucket, conf.prefix+"/json/p2p_health.json", j, conf.Region)
+		if err != nil {
+			return err
+		}
+
 	default:
 		index := func(dir string, kind string) error {
 			j := make([]byte, 0)
@@ -278,6 +314,34 @@ func handler() error {
 		}
 		f.Close()
 
+		j, err = conf.apiAlerts.ToJson()
+		if err != nil {
+			return err
+		}
+		f, err = os.OpenFile(conf.OutputDir+"/json/api_health.json", os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write(j)
+		if err != nil {
+			return err
+		}
+		f.Close()
+
+		j, err = conf.p2pAlerts.ToJson()
+		if err != nil {
+			return err
+		}
+		f, err = os.OpenFile(conf.OutputDir+"/json/p2p_health.json", os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write(j)
+		if err != nil {
+			return err
+		}
+		f.Close()
+
 		err = fhassets.WriteLocalAssets(conf.DarkTheme, conf.OutputDir)
 		if err != nil {
 			return err
@@ -303,10 +367,11 @@ type Config struct {
 	prefix  string
 	geolite string
 
-	p2pAlerts fiohealth.P2pAlerts
-	apiAlerts fiohealth.ApiAlerts
+	p2pAlerts   fiohealth.P2pAlerts
+	apiAlerts   fiohealth.ApiAlerts
+	telegramKey string
+	BaseUrl     string `yaml:"base_url"`
 }
-
 
 func (c *Config) Validate() error {
 	if c.ReportTitle == "" {
@@ -411,7 +476,7 @@ func (c *Config) Validate() error {
 		}
 
 		j := make([]byte, 0)
-		hf, err := os.Open(c.OutputDir+"/json/api_health.json")
+		hf, err := os.Open(c.OutputDir + "/json/api_health.json")
 		if err != nil {
 			log.Println("error loading api alarm state, creating new: " + err.Error())
 			c.apiAlerts.State = make(map[string]*fiohealth.ApiAlertState)
@@ -430,7 +495,7 @@ func (c *Config) Validate() error {
 				c.apiAlerts.State = make(map[string]*fiohealth.ApiAlertState)
 			}
 		}
-		hf, err = os.Open(c.OutputDir+"/json/p2p_health.json")
+		hf, err = os.Open(c.OutputDir + "/json/p2p_health.json")
 		if err != nil {
 			log.Println("error loading p2p alarm state, creating new: " + err.Error())
 			c.p2pAlerts.State = make(map[string]*fiohealth.P2pAlertState)
@@ -496,10 +561,11 @@ func GetConfig() (*Config, error) {
 		c.Region = "us-east-1"
 	}
 	c.geolite = geolite
+	// the telegram key is sensitive, *only* allow via ENV var, should use encrypted parameter in AWS passed to lambda
+	c.telegramKey = os.Getenv("TELEGRAM")
 
 	return c, c.Validate()
 }
-
 
 func checkP2p(conf *Config) (report []fiohealth.P2pResult) {
 	geo, err := fiohealth.MyGeo(conf.geolite)
@@ -512,6 +578,11 @@ func checkP2p(conf *Config) (report []fiohealth.P2pResult) {
 	for i := range conf.P2pNodes {
 		go func(i int) {
 			results[i] = getBlockP2p(conf.P2pNodes[i], geo, conf)
+			if !results[i].Healthy {
+				conf.p2pAlerts.HostFailed(conf.P2pNodes[i], results[i].ErrMsg)
+			} else {
+				conf.p2pAlerts.HostOk(conf.P2pNodes[i])
+			}
 			wg.Done()
 		}(i)
 	}
@@ -741,12 +812,17 @@ func checkApis(conf *Config) (report []fiohealth.Result) {
 				log.Println(a, "net api")
 				results[i].NetExposed = true
 				results[i].Score += 3
+				conf.apiAlerts.HostFailed(a, "net api is enabled", "security")
 			}
 			_, err = api.IsProducerPaused()
 			if err == nil {
 				log.Println(a, "producer api")
 				results[i].ProducerExposed = true
 				results[i].Score += 3
+				conf.apiAlerts.HostFailed(a, "producer api is enabled", "security")
+			}
+			if len(notes) > 0 {
+				conf.apiAlerts.HostFailed(a, strings.Join(notes, ", "), "security")
 			}
 		}(i, a)
 	}

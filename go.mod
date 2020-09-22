@@ -13,5 +13,4 @@ require (
 	github.com/refraction-networking/utls v0.0.0-20200820030103-33a29038e742
 	golang.org/x/text v0.3.3 // indirect
 	gopkg.in/yaml.v2 v2.2.2
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
