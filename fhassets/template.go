@@ -1,5 +1,6 @@
 package fhassets
 
+// Report is the index.html written to the web root
 const Report = `<!DOCTYPE html>
 <html lang="en">
 <head>

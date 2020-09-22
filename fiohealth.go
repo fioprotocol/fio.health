@@ -54,6 +54,8 @@ type P2pResult struct {
 	Score            int    `json:"-"`
 }
 
+// CombineReport builds a Json file that has all of the timing data used to build the charts in the HTML so that it's
+// only necessary to pull a single json file, previously it was loading every one individually and was slow.
 func CombineReport(report FinalResult, files []string, path string) []FinalResult {
 	combined := make([]FinalResult, len(files)+1)
 	combined[len(combined)-1] = report

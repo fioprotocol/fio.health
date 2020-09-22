@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+// CheckApis runs the health checks for the API nodes, each node is tested concurrently, timeouts are set for a short
+// interval. Checks: connection latency, head block lag, chainId is correct, logs (and checks) for expected version,
+// if CORS is permissive, that TLS is enabled, checks for weak TLS ciphers and deprecated version, ensures that
+// the negotiated protocol is TLSv1.2 or higher, alarms if certificate expires within 30 days, and ensures that neither
+// the producer and network API is exposed.
 func CheckApis(conf *Config) (report []Result) {
 	myIpAddr, err := MyGeo(conf.Geolite)
 	if err != nil {
@@ -74,7 +79,6 @@ func CheckApis(conf *Config) (report []Result) {
 				results[i].ErrorFor = "get info"
 				results[i].Score += 1
 				conf.ApiAlerts.HostFailed(a, emsg, "health")
-				//return
 			}
 			if gi.ChainID.String() != conf.ChainId {
 				log.Println(a, "Wrong chain!")
@@ -175,5 +179,3 @@ func CheckApis(conf *Config) (report []Result) {
 	wg.Wait()
 	return results
 }
-
-

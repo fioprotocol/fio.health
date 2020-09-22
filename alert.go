@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// ApiAlertState holds the alarm status for a node
 type ApiAlertState struct {
 	sendAlarm bool
 
@@ -19,11 +20,13 @@ type ApiAlertState struct {
 	SecurityNotBefore time.Time `json:"security_not_before"`
 }
 
+// ApiAlerts contains all api alarms, is marshalled and stored to reduce alarm fatigue
 type ApiAlerts struct {
 	State map[string]*ApiAlertState `json:"state"`
 	sync.Mutex
 }
 
+// UnmarshalApiAlerts converts from json
 func UnmarshalApiAlerts(b []byte) (ApiAlerts, error) {
 	aa := ApiAlerts{}
 	aa.State = make(map[string]*ApiAlertState)
@@ -31,6 +34,7 @@ func UnmarshalApiAlerts(b []byte) (ApiAlerts, error) {
 	return aa, err
 }
 
+// shouldAlarm determines if a new alarm should be generated, should be called *before* updating state.
 func (aa *ApiAlerts) shouldAlarm(host string) bool {
 	if aa.State[host] == nil || aa.State[host].sendAlarm {
 		return true
@@ -44,6 +48,7 @@ func (aa *ApiAlerts) shouldAlarm(host string) bool {
 	return true
 }
 
+// HealthOk resets the health state for an endpoint
 func (aa *ApiAlerts) HealthOk(host string) {
 	aa.Lock()
 	defer aa.Unlock()
@@ -54,6 +59,7 @@ func (aa *ApiAlerts) HealthOk(host string) {
 	aa.State[host].HealthReason = ""
 }
 
+// SecurityOk resets the security state for an endpoint
 func (aa *ApiAlerts) SecurityOk(host string) {
 	aa.Lock()
 	defer aa.Unlock()
@@ -64,6 +70,7 @@ func (aa *ApiAlerts) SecurityOk(host string) {
 	aa.State[host].SecurityReason = ""
 }
 
+// GetAlarms provides a list of alarms that need to be sent to telegram
 func (aa *ApiAlerts) GetAlarms() []string {
 	aa.Lock()
 	defer aa.Unlock()
@@ -81,6 +88,7 @@ func (aa *ApiAlerts) GetAlarms() []string {
 	return alarms
 }
 
+// HostFailed saves a failure into alarm state, calls shouldAlarm to mark as needing an alert
 func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity string) {
 	aa.Lock()
 	defer aa.Unlock()
@@ -114,12 +122,14 @@ func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity string
 	return
 }
 
+// ToJson marshals
 func (aa *ApiAlerts) ToJson() ([]byte, error) {
 	aa.Lock()
 	defer aa.Unlock()
 	return json.MarshalIndent(aa, "", "  ")
 }
 
+// P2pAlertState represents the alarm state for a p2p node
 type P2pAlertState struct {
 	sendAlarm bool
 
@@ -128,11 +138,13 @@ type P2pAlertState struct {
 	NotBefore time.Time `json:"not_before"`
 }
 
+// P2pAlerts holds all the p2p alarms, and is stored each run to reduce alarm fatigue
 type P2pAlerts struct {
 	State map[string]*P2pAlertState
 	sync.Mutex
 }
 
+// UnmarshalP2pAlerts converts from json
 func UnmarshalP2pAlerts(b []byte) (P2pAlerts, error) {
 	pa := P2pAlerts{}
 	err := json.Unmarshal(b, &pa)
@@ -142,6 +154,7 @@ func UnmarshalP2pAlerts(b []byte) (P2pAlerts, error) {
 	return pa, err
 }
 
+// shouldAlarm determines if a new alarm should be generated, should be called *before* updating state.
 func (pa *P2pAlerts) shouldAlarm(host string) bool {
 	if pa.State[host] == nil {
 		return true
@@ -152,6 +165,7 @@ func (pa *P2pAlerts) shouldAlarm(host string) bool {
 	return true
 }
 
+// HostOk resets a p2p node to healthy state
 func (pa *P2pAlerts) HostOk(host string) {
 	pa.Lock()
 	defer pa.Unlock()
@@ -162,6 +176,7 @@ func (pa *P2pAlerts) HostOk(host string) {
 	pa.State[host].Reason = ""
 }
 
+// HostFailed stores a test failure
 func (pa *P2pAlerts) HostFailed(host string, reason string) (shouldAlert bool) {
 	pa.Lock()
 	defer pa.Unlock()
@@ -179,6 +194,7 @@ func (pa *P2pAlerts) HostFailed(host string, reason string) (shouldAlert bool) {
 	return
 }
 
+// GetAlarms returns all of the new failures that need alerting
 func (pa *P2pAlerts) GetAlarms() []string {
 	pa.Lock()
 	defer pa.Unlock()
@@ -191,6 +207,7 @@ func (pa *P2pAlerts) GetAlarms() []string {
 	return alarms
 }
 
+// ToJson marshals the alerts
 func (pa *P2pAlerts) ToJson() ([]byte, error) {
 	pa.Lock()
 	defer pa.Unlock()
