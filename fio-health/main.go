@@ -797,7 +797,7 @@ func checkApis(conf *Config) (report []fiohealth.Result) {
 				if len(resp.TLS.PeerCertificates) > 0 && resp.TLS.PeerCertificates[0] != nil {
 					expires := resp.TLS.PeerCertificates[0].NotAfter.Sub(time.Now().UTC()).Hours() / 24
 					if expires < 30 {
-						appendIf(fmt.Sprintf("expires in %d days", int64(math.Round(expires))))
+						appendIf(fmt.Sprintf("cert expires in %d days", int64(math.Round(expires))))
 						results[i].Score += .1
 					}
 				}
