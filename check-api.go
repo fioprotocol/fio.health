@@ -173,6 +173,8 @@ func CheckApis(conf *Config) (report []Result) {
 			}
 			if len(notes) > 0 {
 				conf.ApiAlerts.HostFailed(a, strings.Join(notes, ", "), "security")
+			} else {
+				conf.ApiAlerts.HealthOk(a)
 			}
 		}(i, a)
 	}
