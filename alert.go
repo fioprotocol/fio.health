@@ -3,6 +3,7 @@ package fiohealth
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -18,46 +19,58 @@ type ApiAlertState struct {
 	SecurityNotBefore time.Time `json:"security_not_before"`
 }
 
-type ApiAlerts map[string]*ApiAlertState
+type ApiAlerts struct {
+	State map[string]*ApiAlertState `json:"state"`
+	sync.Mutex
+}
 
 func UnmarshalApiAlerts(b []byte) (ApiAlerts, error) {
-	aa := make(ApiAlerts)
+	aa := ApiAlerts{}
+	aa.State = make(map[string]*ApiAlertState)
 	err := json.Unmarshal(b, &aa)
 	return aa, err
 }
 
-func (aa ApiAlerts) shouldAlarm(host string) bool {
-	if aa[host] == nil || aa[host].sendAlarm {
+func (aa *ApiAlerts) shouldAlarm(host string) bool {
+	aa.Lock()
+	defer aa.Unlock()
+	if aa.State[host] == nil || aa.State[host].sendAlarm {
 		return true
 	}
-	if time.Now().Before(aa[host].HealthNotBefore) && aa[host].HealthAlarm {
+	if time.Now().Before(aa.State[host].HealthNotBefore) && aa.State[host].HealthAlarm {
 		return false
 	}
-	if aa[host].SecurityAlarm && !aa[host].HealthAlarm && time.Now().Before(aa[host].SecurityNotBefore) {
+	if aa.State[host].SecurityAlarm && !aa.State[host].HealthAlarm && time.Now().Before(aa.State[host].SecurityNotBefore) {
 		return false
 	}
 	return true
 }
 
-func (aa ApiAlerts) HealthOk(host string) {
-	if aa[host] == nil {
-		aa[host] = &ApiAlertState{}
+func (aa *ApiAlerts) HealthOk(host string) {
+	aa.Lock()
+	defer aa.Unlock()
+	if aa.State[host] == nil {
+		aa.State[host] = &ApiAlertState{}
 	}
-	aa[host].HealthAlarm = false
-	aa[host].HealthReason = ""
+	aa.State[host].HealthAlarm = false
+	aa.State[host].HealthReason = ""
 }
 
-func (aa ApiAlerts) SecurityOk(host string) {
-	if aa[host] == nil {
-		aa[host] = &ApiAlertState{}
+func (aa *ApiAlerts) SecurityOk(host string) {
+	aa.Lock()
+	defer aa.Unlock()
+	if aa.State[host] == nil {
+		aa.State[host] = &ApiAlertState{}
 	}
-	aa[host].SecurityAlarm = false
-	aa[host].SecurityReason = ""
+	aa.State[host].SecurityAlarm = false
+	aa.State[host].SecurityReason = ""
 }
 
-func (aa ApiAlerts) GetAlarms() []string {
+func (aa *ApiAlerts) GetAlarms() []string {
+	aa.Lock()
+	defer aa.Unlock()
 	alarms := make([]string, 0)
-	for k, v := range aa {
+	for k, v := range aa.State {
 		if v.sendAlarm {
 			if v.HealthAlarm {
 				alarms = append(alarms, fmt.Sprintf("Health warning: %s - %s", k, v.HealthReason))
@@ -70,34 +83,38 @@ func (aa ApiAlerts) GetAlarms() []string {
 	return alarms
 }
 
-func (aa ApiAlerts) HostFailed(host string, why string, healthOrSecurity string) {
+func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity string) {
+	aa.Lock()
+	defer aa.Unlock()
 	nb := time.Now().Add(time.Hour)
-	if aa[host] == nil {
-		aa[host] = &ApiAlertState{}
+	if aa.State[host] == nil {
+		aa.State[host] = &ApiAlertState{}
 	}
-	aa[host].sendAlarm = aa.shouldAlarm(host)
+	aa.State[host].sendAlarm = aa.shouldAlarm(host)
 	switch healthOrSecurity {
 	case "health":
-		aa[host].HealthAlarm = true
-		aa[host].HealthNotBefore = nb
-		if aa[host].HealthReason != "" {
-			aa[host].HealthReason = aa[host].HealthReason+"; "+why
+		aa.State[host].HealthAlarm = true
+		aa.State[host].HealthNotBefore = nb
+		if aa.State[host].HealthReason != "" {
+			aa.State[host].HealthReason = aa.State[host].HealthReason+"; "+why
 			return
 		}
-		aa[host].HealthReason = why
+		aa.State[host].HealthReason = why
 	case "security":
-		aa[host].SecurityAlarm = true
-		aa[host].SecurityNotBefore = nb
-		if aa[host].SecurityReason != "" {
-			aa[host].SecurityReason = aa[host].SecurityReason+"; "+why
+		aa.State[host].SecurityAlarm = true
+		aa.State[host].SecurityNotBefore = nb
+		if aa.State[host].SecurityReason != "" {
+			aa.State[host].SecurityReason = aa.State[host].SecurityReason+"; "+why
 			return
 		}
-		aa[host].SecurityReason = why
+		aa.State[host].SecurityReason = why
 	}
 	return
 }
 
-func (aa ApiAlerts) ToJson() ([]byte, error) {
+func (aa *ApiAlerts) ToJson() ([]byte, error) {
+	aa.Lock()
+	defer aa.Unlock()
 	return json.MarshalIndent(aa, "", "  ")
 }
 
@@ -109,50 +126,64 @@ type P2pAlertState struct {
 	NotBefore time.Time `json:"not_before"`
 }
 
-type P2pAlerts map[string]*P2pAlertState
+type P2pAlerts struct {
+	State map[string]*P2pAlertState
+	sync.Mutex
+}
 
 func UnmarshalP2pAlerts(b []byte) (P2pAlerts, error) {
-	pa := make(P2pAlerts)
+	pa := P2pAlerts{}
 	err := json.Unmarshal(b, &pa)
+	if pa.State == nil {
+		pa.State = make(map[string]*P2pAlertState)
+	}
 	return pa, err
 }
 
-func (pa P2pAlerts) shouldAlarm(host string) bool {
-	if pa[host] == nil {
+func (pa *P2pAlerts) shouldAlarm(host string) bool {
+	pa.Lock()
+	defer pa.Unlock()
+	if pa.State[host] == nil {
 		return true
 	}
-	if pa[host].Alarm || time.Now().After(pa[host].NotBefore) {
+	if pa.State[host].Alarm || time.Now().After(pa.State[host].NotBefore) {
 		return false
 	}
 	return true
 }
 
-func (pa P2pAlerts) HostOk(host string) {
-	if pa[host] == nil {
-		pa[host] = &P2pAlertState{}
+func (pa *P2pAlerts) HostOk(host string) {
+	pa.Lock()
+	defer pa.Unlock()
+	if pa.State[host] == nil {
+		pa.State[host] = &P2pAlertState{}
 	}
-	pa[host].Alarm = false
-	pa[host].Reason = ""
+	pa.State[host].Alarm = false
+	pa.State[host].Reason = ""
 }
 
-func (pa P2pAlerts) HostFailed(host string, reason string) (shouldAlert bool) {
-	if pa[host] == nil {
-		pa[host] = &P2pAlertState{}
+func (pa *P2pAlerts) HostFailed(host string, reason string) (shouldAlert bool) {
+	pa.Lock()
+	defer pa.Unlock()
+	if pa.State[host] == nil {
+		pa.State[host] = &P2pAlertState{}
 	}
-	pa[host].sendAlarm = pa.shouldAlarm(host)
-	pa[host].Alarm = true
-	pa[host].NotBefore = time.Now().Add(time.Hour)
-	if pa[host].Reason != "" {
-		pa[host].Reason = pa[host].Reason+"; " +reason
+	pa.State[host].sendAlarm = pa.shouldAlarm(host)
+	pa.State[host].Alarm = true
+	pa.State[host].NotBefore = time.Now().Add(time.Hour)
+	if pa.State[host].Reason != "" {
+		pa.State[host].Reason = pa.State[host].Reason+"; " +reason
 		return
 	}
-	pa[host].Reason = reason
+	pa.State[host].Reason = reason
 	return
 }
 
-func (pa P2pAlerts) GetAlarms() []string {
+func (pa *P2pAlerts) GetAlarms() []string {
+	pa.Lock()
+	defer pa.Unlock()
 	alarms := make([]string, 0)
-	for k, v := range pa {
+	for k, v := range pa.State {
 		if v.sendAlarm {
 			alarms = append(alarms, fmt.Sprintf("P2P health warning: %s - %s", k, v.Reason))
 		}
@@ -160,7 +191,9 @@ func (pa P2pAlerts) GetAlarms() []string {
 	return alarms
 }
 
-func (pa P2pAlerts) ToJson() ([]byte, error) {
+func (pa *P2pAlerts) ToJson() ([]byte, error) {
+	pa.Lock()
+	defer pa.Unlock()
 	return json.MarshalIndent(pa, "", "  ")
 }
 
