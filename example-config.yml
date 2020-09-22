@@ -6,8 +6,10 @@ report_title: Testnet
 # hex string (without 0x), recognizes two special cases: mainnet or testnet
 chain_id: testnet
 
-# required only if using Telegram, base url for hyperlink
-base_uri: ""
+# required only if using Telegram.
+# API key can only be set via TELEGRAM env variable, don't expose it here.
+telegram_channel: "@myawesometelegramgroup"
+base_url: "https://healthchecks.some.where"
 
 # can be local, or s3://bucket/.... if using s3 also set region
 # output_dir: s3://....

@@ -121,7 +121,7 @@ func handler() error {
 
 	if conf.telegramKey != "" {
 		for _, alert := range conf.apiAlerts.GetAlarms() {
-			err = fiohealth.Notify(alert, conf.telegramKey, conf.BaseUrl)
+			err = fiohealth.Notify(alert, conf.telegramKey, conf.TelegramChannel, conf.BaseUrl)
 			if err != nil {
 				log.Println(err)
 				break
@@ -129,7 +129,7 @@ func handler() error {
 		}
 
 		for _, alert := range conf.p2pAlerts.GetAlarms() {
-			err = fiohealth.Notify(alert, conf.telegramKey, conf.BaseUrl)
+			err = fiohealth.Notify(alert, conf.telegramKey, conf.TelegramChannel, conf.BaseUrl)
 			if err != nil {
 				log.Println(err)
 				break
@@ -367,10 +367,11 @@ type Config struct {
 	prefix  string
 	geolite string
 
-	p2pAlerts   fiohealth.P2pAlerts
-	apiAlerts   fiohealth.ApiAlerts
-	telegramKey string
-	BaseUrl     string `yaml:"base_url"`
+	p2pAlerts       fiohealth.P2pAlerts
+	apiAlerts       fiohealth.ApiAlerts
+	telegramKey     string
+	TelegramChannel string `yaml:"telegram_channel"`
+	BaseUrl         string `yaml:"base_url"`
 }
 
 func (c *Config) Validate() error {
@@ -524,7 +525,7 @@ func GetConfig() (*Config, error) {
 		confFile, geolite string
 	)
 
-	flag.StringVar(&confFile, "conf", "config.yml", "yaml config file to load, can be local file, or S3 uri, or ENV var: CONFIG")
+	flag.StringVar(&confFile, "c", "config.yml", "yaml config file to load, can be local file, or S3 uri, or ENV var: CONFIG")
 	flag.StringVar(&geolite, "db", "GeoLite2-Country.mmdb", "geo lite database to open")
 	flag.Parse()
 
