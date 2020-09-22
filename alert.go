@@ -79,12 +79,20 @@ func (aa ApiAlerts) HostFailed(host string, why string, healthOrSecurity string)
 	switch healthOrSecurity {
 	case "health":
 		aa[host].HealthAlarm = true
-		aa[host].HealthReason = why
 		aa[host].HealthNotBefore = nb
+		if aa[host].HealthReason != "" {
+			aa[host].HealthReason = aa[host].HealthReason+"; "+why
+			return
+		}
+		aa[host].HealthReason = why
 	case "security":
 		aa[host].SecurityAlarm = true
-		aa[host].SecurityReason = why
 		aa[host].SecurityNotBefore = nb
+		if aa[host].SecurityReason != "" {
+			aa[host].SecurityReason = aa[host].SecurityReason+"; "+why
+			return
+		}
+		aa[host].SecurityReason = why
 	}
 	return
 }
@@ -133,8 +141,12 @@ func (pa P2pAlerts) HostFailed(host string, reason string) (shouldAlert bool) {
 	}
 	pa[host].sendAlarm = pa.shouldAlarm(host)
 	pa[host].Alarm = true
-	pa[host].Reason = reason
 	pa[host].NotBefore = time.Now().Add(time.Hour)
+	if pa[host].Reason != "" {
+		pa[host].Reason = pa[host].Reason+"; " +reason
+		return
+	}
+	pa[host].Reason = reason
 	return
 }
 
