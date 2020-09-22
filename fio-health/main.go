@@ -371,23 +371,23 @@ func (c *Config) Validate() error {
 		b, err = fiohealth.S3Get(c.bucket, c.prefix+"/json/api_health.json", c.Region)
 		if err != nil {
 			log.Println("error loading api alarm state, creating new: " + err.Error())
-			c.apiAlerts = make(fiohealth.ApiAlerts)
+			c.apiAlerts.State = make(map[string]*fiohealth.ApiAlertState)
 		} else {
 			c.apiAlerts, err = fiohealth.UnmarshalApiAlerts(b)
 			if err != nil {
 				log.Println("error loading api alarm state, creating new: " + err.Error())
-				c.apiAlerts = make(fiohealth.ApiAlerts)
+				c.apiAlerts.State = make(map[string]*fiohealth.ApiAlertState)
 			}
 		}
 		b, err = fiohealth.S3Get(c.bucket, c.prefix+"/json/p2p_health.json", c.Region)
 		if err != nil {
 			log.Println("error loading p2p alarm state, creating new: " + err.Error())
-			c.p2pAlerts = make(fiohealth.P2pAlerts)
+			c.p2pAlerts.State = make(map[string]*fiohealth.P2pAlertState)
 		} else {
 			c.p2pAlerts, err = fiohealth.UnmarshalP2pAlerts(b)
 			if err != nil {
 				log.Println("error loading p2p alarm state, creating new: " + err.Error())
-				c.p2pAlerts = make(fiohealth.P2pAlerts)
+				c.p2pAlerts.State = make(map[string]*fiohealth.P2pAlertState)
 			}
 		}
 
@@ -414,39 +414,39 @@ func (c *Config) Validate() error {
 		hf, err := os.Open(c.OutputDir+"/json/api_health.json")
 		if err != nil {
 			log.Println("error loading api alarm state, creating new: " + err.Error())
-			c.apiAlerts = make(fiohealth.ApiAlerts)
+			c.apiAlerts.State = make(map[string]*fiohealth.ApiAlertState)
 		} else {
 			j, err = ioutil.ReadAll(hf)
 			hf.Close()
 			if err != nil {
 				log.Println("error loading api alarm state, creating new: " + err.Error())
-				c.apiAlerts = make(fiohealth.ApiAlerts)
+				c.apiAlerts.State = make(map[string]*fiohealth.ApiAlertState)
 			}
 		}
-		if c.apiAlerts == nil {
+		if c.apiAlerts.State == nil {
 			err = json.Unmarshal(j, &c.apiAlerts)
 			if err != nil {
 				log.Println("error loading api alarm state, creating new: " + err.Error())
-				c.apiAlerts = make(fiohealth.ApiAlerts)
+				c.apiAlerts.State = make(map[string]*fiohealth.ApiAlertState)
 			}
 		}
 		hf, err = os.Open(c.OutputDir+"/json/p2p_health.json")
 		if err != nil {
 			log.Println("error loading p2p alarm state, creating new: " + err.Error())
-			c.p2pAlerts = make(fiohealth.P2pAlerts)
+			c.p2pAlerts.State = make(map[string]*fiohealth.P2pAlertState)
 		} else {
 			j, err = ioutil.ReadAll(hf)
 			hf.Close()
 			if err != nil {
 				log.Println("error loading p2p alarm state, creating new: " + err.Error())
-				c.p2pAlerts = make(fiohealth.P2pAlerts)
+				c.p2pAlerts.State = make(map[string]*fiohealth.P2pAlertState)
 			}
 		}
-		if c.apiAlerts == nil {
+		if c.apiAlerts.State == nil {
 			err = json.Unmarshal(j, &c.p2pAlerts)
 			if err != nil {
 				log.Println("error loading p2p alarm state, creating new: " + err.Error())
-				c.p2pAlerts = make(fiohealth.P2pAlerts)
+				c.p2pAlerts.State = make(map[string]*fiohealth.P2pAlertState)
 			}
 		}
 	}
@@ -631,6 +631,7 @@ func checkApis(conf *Config) (report []fiohealth.Result) {
 				results[i].Error = emsg
 				results[i].ErrorFor = "initial connection"
 				results[i].Score += 10
+				conf.apiAlerts.HostFailed(a, emsg, "health")
 				return
 			}
 			before := time.Now().UTC()
@@ -643,16 +644,19 @@ func checkApis(conf *Config) (report []fiohealth.Result) {
 				results[i].Error = err.Error()
 				results[i].ErrorFor = "get info"
 				results[i].Score += 10
+				conf.apiAlerts.HostFailed(a, err.Error(), "health")
 				return
 			}
 			results[i].HeadBlockLatency = now.Sub(gi.HeadBlockTime.Time).Milliseconds()
 			results[i].NodeVer = gi.ServerVersionString
 			if gi.HeadBlockTime.Time.Before(time.Now().UTC().Add(-30 * time.Second)) {
 				log.Println(a, "is not synced!")
+				emsg := fmt.Sprintf("node head block is behind by %.2f", now.Sub(gi.HeadBlockTime.Time).Seconds())
 				results[i].HadError = true
-				results[i].Error = fmt.Sprintf("node head block is behind by %.2f", now.Sub(gi.HeadBlockTime.Time).Seconds())
+				results[i].Error = emsg
 				results[i].ErrorFor = "get info"
 				results[i].Score += 1
+				conf.apiAlerts.HostFailed(a, emsg, "health")
 				//return
 			}
 			if gi.ChainID.String() != conf.ChainId {
@@ -661,6 +665,7 @@ func checkApis(conf *Config) (report []fiohealth.Result) {
 				results[i].Error = "wrong chain"
 				results[i].ErrorFor = "get info"
 				results[i].Score += 5
+				conf.apiAlerts.HostFailed(a, "wrong chain", "health")
 			}
 			_, err = api.GetBlockByNum(gi.LastIrreversibleBlockNum)
 			if err != nil {
@@ -669,6 +674,7 @@ func checkApis(conf *Config) (report []fiohealth.Result) {
 				results[i].Error = err.Error()
 				results[i].ErrorFor = "get block"
 				results[i].Score += 10
+				conf.apiAlerts.HostFailed(a, err.Error(), "health")
 				return
 			}
 
@@ -689,6 +695,7 @@ func checkApis(conf *Config) (report []fiohealth.Result) {
 				results[i].Error = err.Error()
 				results[i].ErrorFor = "get producer schedule"
 				results[i].Score += 10
+				conf.apiAlerts.HostFailed(a, err.Error(), "health")
 			}
 			if resp == nil {
 				return
@@ -699,6 +706,7 @@ func checkApis(conf *Config) (report []fiohealth.Result) {
 				results[i].PermissiveCors = true
 			} else {
 				results[i].Score += 1
+				conf.apiAlerts.HostFailed(a, "missing permissive CORS header", "health")
 			}
 
 			if resp.TLS != nil {
