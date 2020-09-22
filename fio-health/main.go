@@ -522,28 +522,31 @@ func (c *Config) Validate() error {
 func GetConfig() (*Config, error) {
 	var (
 		err               error
-		confFile, geolite string
+		configFile, confFile, geolite string
 	)
 
-	flag.StringVar(&confFile, "c", "config.yml", "yaml config file to load, can be local file, or S3 uri, or ENV var: CONFIG")
+	flag.StringVar(&confFile, "config", "config.yml", "yaml config file to load, can be local file, or S3 uri, or ENV var: CONFIG")
 	flag.StringVar(&geolite, "db", "GeoLite2-Country.mmdb", "geo lite database to open")
 	flag.Parse()
 
-	if os.Getenv("CONFIG") != "" {
-		confFile = os.Getenv("CONFIG")
+	switch true {
+	case os.Getenv("CONFIG") != "":
+		configFile = os.Getenv("CONFIG")
+	case confFile != "":
+		configFile = confFile
 	}
 
 	var y []byte
 	switch true {
-	case confFile == "":
+	case configFile == "":
 		return nil, errors.New("cannot load config, no file specified")
-	case strings.HasPrefix(confFile, "s3:"):
-		y, err = fiohealth.S3GetUrl(confFile, "")
+	case strings.HasPrefix(configFile, "s3:"):
+		y, err = fiohealth.S3GetUrl(configFile, "")
 		if err != nil {
 			return nil, err
 		}
 	default:
-		f, err := os.Open(confFile)
+		f, err := os.Open(configFile)
 		if err != nil {
 			return nil, err
 		}
