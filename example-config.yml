@@ -5,6 +5,7 @@ report_title: Testnet
 
 # hex string (without 0x), recognizes two special cases: mainnet or testnet
 chain_id: testnet
+expected_version_prefix: "v2.0.0"
 
 # required only if using Telegram.
 # API key can only be set via TELEGRAM env variable, don't expose it here.

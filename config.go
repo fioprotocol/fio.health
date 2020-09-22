@@ -14,13 +14,14 @@ import (
 )
 
 type Config struct {
-	ReportTitle string   `yaml:"report_title"`
-	ChainId     string   `yaml:"chain_id"`
-	ApiNodes    []string `yaml:"api_nodes"`
-	P2pNodes    []string `yaml:"p2p_nodes"`
-	OutputDir   string   `yaml:"output_dir"`
-	Region      string   `yaml:"region"`
-	DarkTheme   bool     `yaml:"dark_theme"`
+	ReportTitle           string   `yaml:"report_title"`
+	ChainId               string   `yaml:"chain_id"`
+	ExpectedVersionPrefix string   `yaml:"expected_version_prefix"`
+	ApiNodes              []string `yaml:"api_nodes"`
+	P2pNodes              []string `yaml:"p2p_nodes"`
+	OutputDir             string   `yaml:"output_dir"`
+	Region                string   `yaml:"region"`
+	DarkTheme             bool     `yaml:"dark_theme"`
 
 	Bucket  string `yaml:"-"`
 	Prefix  string `yaml:"-"`
@@ -28,9 +29,9 @@ type Config struct {
 
 	P2pAlerts       P2pAlerts `yaml:"-"`
 	ApiAlerts       ApiAlerts `yaml:"-"`
-	TelegramKey     string `yaml:"-"`
-	TelegramChannel string `yaml:"telegram_channel"`
-	BaseUrl         string `yaml:"base_url"`
+	TelegramKey     string    `yaml:"-"`
+	TelegramChannel string    `yaml:"telegram_channel"`
+	BaseUrl         string    `yaml:"base_url"`
 }
 
 func (c *Config) Validate() error {
@@ -180,7 +181,7 @@ func (c *Config) Validate() error {
 
 func GetConfig() (*Config, error) {
 	var (
-		err               error
+		err                           error
 		configFile, confFile, geolite string
 	)
 

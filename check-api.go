@@ -63,6 +63,9 @@ func CheckApis(conf *Config) (report []Result) {
 			}
 			results[i].HeadBlockLatency = now.Sub(gi.HeadBlockTime.Time).Milliseconds()
 			results[i].NodeVer = gi.ServerVersionString
+			if !strings.HasPrefix(results[i].NodeVer, conf.ExpectedVersionPrefix) {
+				results[i].WrongVersion = true
+			}
 			if gi.HeadBlockTime.Time.Before(time.Now().UTC().Add(-30 * time.Second)) {
 				log.Println(a, "is not synced!")
 				emsg := fmt.Sprintf("node head block is behind by %.2f", now.Sub(gi.HeadBlockTime.Time).Seconds())

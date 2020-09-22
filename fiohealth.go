@@ -37,6 +37,7 @@ type Result struct {
 	NetExposed       bool    `json:"net_exposed"`
 	FromGeo          string  `json:"from_geo"`
 	Score            float32 `json:"-"`
+	WrongVersion     bool    `json:"-"`
 }
 
 // P2pResult is the output from a P2P health check

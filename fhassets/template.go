@@ -74,7 +74,7 @@ const Report = `<!DOCTYPE html>
         {{range .Api}}
         <tr id="{{.Node}}">
           <th scope="row" class="align-middle">{{.Node}}</th>
-          <th scope="row" class="align-middle">{{.NodeVer}}</th>
+          <th scope="row" {{if .WrongVersion}}class="align-middle text-warning"{{else}}class="align-middle"{{end}}>{{.NodeVer}}</th>
           <td class="align-middle">{{if .HadError}}<img src="tri.svg" alt="failed" width="28" height="28">{{else}}<img src="check.svg" alt="ok" width="28" height="28">{{end}}</td>
           <td class="text-info" style="max-width: 250px;"><div class="d-inline-block overflow-auto" style="max-width: 245px;max-height: 40px;">{{.Error}}</div></td>
           <td {{if gt .RequestLatency 2000}}class="align-middle text-warning"{{else}}class="align-middle"{{end}}>
