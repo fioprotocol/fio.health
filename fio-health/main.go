@@ -302,6 +302,9 @@ type Config struct {
 	bucket  string
 	prefix  string
 	geolite string
+
+	p2pAlerts fiohealth.P2pAlerts
+	apiAlerts fiohealth.ApiAlerts
 }
 
 
@@ -362,6 +365,32 @@ func (c *Config) Validate() error {
 		if err != nil {
 			return errors.New("test s3 write: " + err.Error())
 		}
+
+		// get alarm states, or create new
+		b := make([]byte, 0)
+		b, err = fiohealth.S3Get(c.bucket, c.prefix+"/json/api_health.json", c.Region)
+		if err != nil {
+			log.Println("error loading api alarm state, creating new: " + err.Error())
+			c.apiAlerts = make(fiohealth.ApiAlerts)
+		} else {
+			c.apiAlerts, err = fiohealth.UnmarshalApiAlerts(b)
+			if err != nil {
+				log.Println("error loading api alarm state, creating new: " + err.Error())
+				c.apiAlerts = make(fiohealth.ApiAlerts)
+			}
+		}
+		b, err = fiohealth.S3Get(c.bucket, c.prefix+"/json/p2p_health.json", c.Region)
+		if err != nil {
+			log.Println("error loading p2p alarm state, creating new: " + err.Error())
+			c.p2pAlerts = make(fiohealth.P2pAlerts)
+		} else {
+			c.p2pAlerts, err = fiohealth.UnmarshalP2pAlerts(b)
+			if err != nil {
+				log.Println("error loading p2p alarm state, creating new: " + err.Error())
+				c.p2pAlerts = make(fiohealth.P2pAlerts)
+			}
+		}
+
 	default:
 		f, err := os.OpenFile(c.OutputDir+"/.write_test", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
@@ -380,8 +409,47 @@ func (c *Config) Validate() error {
 		if err != nil {
 			return errors.New("could not create output dir for historical html reports: " + err.Error())
 		}
-	}
 
+		j := make([]byte, 0)
+		hf, err := os.Open(c.OutputDir+"/json/api_health.json")
+		if err != nil {
+			log.Println("error loading api alarm state, creating new: " + err.Error())
+			c.apiAlerts = make(fiohealth.ApiAlerts)
+		} else {
+			j, err = ioutil.ReadAll(hf)
+			hf.Close()
+			if err != nil {
+				log.Println("error loading api alarm state, creating new: " + err.Error())
+				c.apiAlerts = make(fiohealth.ApiAlerts)
+			}
+		}
+		if c.apiAlerts == nil {
+			err = json.Unmarshal(j, &c.apiAlerts)
+			if err != nil {
+				log.Println("error loading api alarm state, creating new: " + err.Error())
+				c.apiAlerts = make(fiohealth.ApiAlerts)
+			}
+		}
+		hf, err = os.Open(c.OutputDir+"/json/p2p_health.json")
+		if err != nil {
+			log.Println("error loading p2p alarm state, creating new: " + err.Error())
+			c.p2pAlerts = make(fiohealth.P2pAlerts)
+		} else {
+			j, err = ioutil.ReadAll(hf)
+			hf.Close()
+			if err != nil {
+				log.Println("error loading p2p alarm state, creating new: " + err.Error())
+				c.p2pAlerts = make(fiohealth.P2pAlerts)
+			}
+		}
+		if c.apiAlerts == nil {
+			err = json.Unmarshal(j, &c.p2pAlerts)
+			if err != nil {
+				log.Println("error loading p2p alarm state, creating new: " + err.Error())
+				c.p2pAlerts = make(fiohealth.P2pAlerts)
+			}
+		}
+	}
 	return nil
 }
 
