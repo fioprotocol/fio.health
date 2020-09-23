@@ -11,6 +11,8 @@ expected_version_prefix: "v2.0.0"
 # API key can only be set via TELEGRAM env variable, don't expose it here.
 telegram_channel: "@myawesometelegramgroup"
 base_url: "https://healthchecks.some.where"
+# (optional) suppress alerts for a service that recovers and then fails again (in hours, default 4, minimum 1)
+flap_suppression: 2
 
 # can be local, or s3://bucket/.... if using s3 also set region
 # output_dir: s3://....

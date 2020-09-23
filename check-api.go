@@ -50,7 +50,7 @@ func CheckApis(conf *Config) (report []Result) {
 				results[i].Error = emsg
 				results[i].ErrorFor = "initial connection"
 				results[i].Score += 10
-				conf.ApiAlerts.HostFailed(a, emsg, "health")
+				conf.ApiAlerts.HostFailed(a, emsg, "health", conf.FlapSuppression)
 				return
 			}
 			before := time.Now().UTC()
@@ -63,7 +63,7 @@ func CheckApis(conf *Config) (report []Result) {
 				results[i].Error = err.Error()
 				results[i].ErrorFor = "get info"
 				results[i].Score += 10
-				conf.ApiAlerts.HostFailed(a, err.Error(), "health")
+				conf.ApiAlerts.HostFailed(a, err.Error(), "health", conf.FlapSuppression)
 				return
 			}
 			results[i].HeadBlockLatency = now.Sub(gi.HeadBlockTime.Time).Milliseconds()
@@ -78,7 +78,7 @@ func CheckApis(conf *Config) (report []Result) {
 				results[i].Error = emsg
 				results[i].ErrorFor = "get info"
 				results[i].Score += 1
-				conf.ApiAlerts.HostFailed(a, emsg, "health")
+				conf.ApiAlerts.HostFailed(a, emsg, "health", conf.FlapSuppression)
 			}
 			if gi.ChainID.String() != conf.ChainId {
 				log.Println(a, "Wrong chain!")
@@ -86,7 +86,7 @@ func CheckApis(conf *Config) (report []Result) {
 				results[i].Error = "wrong chain"
 				results[i].ErrorFor = "get info"
 				results[i].Score += 5
-				conf.ApiAlerts.HostFailed(a, "wrong chain", "health")
+				conf.ApiAlerts.HostFailed(a, "wrong chain", "health", conf.FlapSuppression)
 			}
 			_, err = api.GetBlockByNum(gi.LastIrreversibleBlockNum)
 			if err != nil {
@@ -95,7 +95,7 @@ func CheckApis(conf *Config) (report []Result) {
 				results[i].Error = err.Error()
 				results[i].ErrorFor = "get block"
 				results[i].Score += 10
-				conf.ApiAlerts.HostFailed(a, err.Error(), "health")
+				conf.ApiAlerts.HostFailed(a, err.Error(), "health", conf.FlapSuppression)
 				return
 			}
 
@@ -116,7 +116,7 @@ func CheckApis(conf *Config) (report []Result) {
 				results[i].Error = err.Error()
 				results[i].ErrorFor = "get producer schedule"
 				results[i].Score += 10
-				conf.ApiAlerts.HostFailed(a, err.Error(), "health")
+				conf.ApiAlerts.HostFailed(a, err.Error(), "health", conf.FlapSuppression)
 			}
 			if resp == nil {
 				return
@@ -127,7 +127,7 @@ func CheckApis(conf *Config) (report []Result) {
 				results[i].PermissiveCors = true
 			} else {
 				results[i].Score += 1
-				conf.ApiAlerts.HostFailed(a, "missing permissive CORS header", "health")
+				conf.ApiAlerts.HostFailed(a, "missing permissive CORS header", "health", conf.FlapSuppression)
 			}
 
 			if resp.TLS != nil {
@@ -162,17 +162,17 @@ func CheckApis(conf *Config) (report []Result) {
 				log.Println(a, "net api")
 				results[i].NetExposed = true
 				results[i].Score += 3
-				conf.ApiAlerts.HostFailed(a, "net api is enabled", "security")
+				conf.ApiAlerts.HostFailed(a, "net api is enabled", "security", conf.FlapSuppression)
 			}
 			_, err = api.IsProducerPaused()
 			if err == nil {
 				log.Println(a, "producer api")
 				results[i].ProducerExposed = true
 				results[i].Score += 3
-				conf.ApiAlerts.HostFailed(a, "producer api is enabled", "security")
+				conf.ApiAlerts.HostFailed(a, "producer api is enabled", "security", conf.FlapSuppression)
 			}
 			if len(notes) > 0 {
-				conf.ApiAlerts.HostFailed(a, strings.Join(notes, ", "), "security")
+				conf.ApiAlerts.HostFailed(a, strings.Join(notes, ", "), "security", conf.FlapSuppression)
 			} else {
 				conf.ApiAlerts.HealthOk(a)
 			}

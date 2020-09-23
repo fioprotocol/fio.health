@@ -89,10 +89,10 @@ func (aa *ApiAlerts) GetAlarms() []string {
 }
 
 // HostFailed saves a failure into alarm state, calls shouldAlarm to mark as needing an alert
-func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity string) {
+func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity string, suppress int) {
 	aa.Lock()
 	defer aa.Unlock()
-	nb := time.Now().Add(time.Hour)
+	nb := time.Now().Add(time.Duration(suppress) * time.Hour)
 	if aa.State[host] == nil {
 		aa.State[host] = &ApiAlertState{}
 	}
@@ -177,7 +177,7 @@ func (pa *P2pAlerts) HostOk(host string) {
 }
 
 // HostFailed stores a test failure
-func (pa *P2pAlerts) HostFailed(host string, reason string) (shouldAlert bool) {
+func (pa *P2pAlerts) HostFailed(host string, reason string, suppression int) (shouldAlert bool) {
 	pa.Lock()
 	defer pa.Unlock()
 	if pa.State[host] == nil {
@@ -185,7 +185,7 @@ func (pa *P2pAlerts) HostFailed(host string, reason string) (shouldAlert bool) {
 	}
 	pa.State[host].sendAlarm = pa.shouldAlarm(host)
 	pa.State[host].Alarm = true
-	pa.State[host].NotBefore = time.Now().Add(time.Hour)
+	pa.State[host].NotBefore = time.Now().Add(time.Duration(suppression) * time.Hour)
 	if pa.State[host].Reason != "" {
 		pa.State[host].Reason = pa.State[host].Reason + "; " + reason
 		return

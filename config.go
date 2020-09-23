@@ -32,6 +32,7 @@ type Config struct {
 	TelegramKey     string    `yaml:"-"`
 	TelegramChannel string    `yaml:"telegram_channel"`
 	BaseUrl         string    `yaml:"base_url"`
+	FlapSuppression int       `yaml:"flap_suppression"` // hours: suppresses flapping service alarms, min 1, default 4
 }
 
 func (c *Config) Validate() error {
@@ -76,6 +77,10 @@ func (c *Config) Validate() error {
 	}
 	if len(c.OutputDir) > 1 && strings.HasSuffix(c.OutputDir, "/") {
 		c.OutputDir = c.OutputDir[:len(c.OutputDir)-2]
+	}
+
+	if c.FlapSuppression < 1 {
+		c.FlapSuppression = 4
 	}
 
 	switch strings.HasPrefix(c.OutputDir, "s3://") {

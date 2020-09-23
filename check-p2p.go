@@ -22,7 +22,7 @@ func CheckP2p(conf *Config) (report []P2pResult) {
 		go func(i int) {
 			results[i] = P2pConnect(conf.P2pNodes[i], geo, conf)
 			if !results[i].Healthy {
-				conf.P2pAlerts.HostFailed(conf.P2pNodes[i], results[i].ErrMsg)
+				conf.P2pAlerts.HostFailed(conf.P2pNodes[i], results[i].ErrMsg, conf.FlapSuppression)
 			} else {
 				conf.P2pAlerts.HostOk(conf.P2pNodes[i])
 			}
@@ -44,7 +44,7 @@ func P2pConnect(p2pnode string, geo string, conf *Config) P2pResult {
 		ChainID:      cid,
 		HeadBlockNum: 1,
 	})
-	peer.SetConnectionTimeout(5 * time.Second)
+	peer.SetConnectionTimeout(10 * time.Second)
 	client := p2p.NewClient(
 		peer,
 		false,
