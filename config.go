@@ -27,12 +27,12 @@ type Config struct {
 	Prefix  string `yaml:"-"`
 	Geolite string `yaml:"-"`
 
-	P2pAlerts       P2pAlerts `yaml:"-"`
-	ApiAlerts       ApiAlerts `yaml:"-"`
-	TelegramKey     string    `yaml:"-"`
-	TelegramChannel string    `yaml:"telegram_channel"`
-	BaseUrl         string    `yaml:"base_url"`
-	FlapSuppression int       `yaml:"flap_suppression"` // hours: suppresses flapping service alarms, min 1, default 4
+	P2pAlerts       *P2pAlerts `yaml:"-"`
+	ApiAlerts       *ApiAlerts `yaml:"-"`
+	TelegramKey     string     `yaml:"-"`
+	TelegramChannel string     `yaml:"telegram_channel"`
+	BaseUrl         string     `yaml:"base_url"`
+	FlapSuppression int        `yaml:"flap_suppression"` // hours: suppresses flapping service alarms, min 1, default 4
 }
 
 func (c *Config) Validate() error {
@@ -102,6 +102,7 @@ func (c *Config) Validate() error {
 		b, err = S3Get(c.Bucket, c.Prefix+"/json/api_health.json", c.Region)
 		if err != nil {
 			log.Println("error loading api alarm state, creating new: " + err.Error())
+			c.ApiAlerts = &ApiAlerts{}
 			c.ApiAlerts.State = make(map[string]*ApiAlertState)
 		} else {
 			c.ApiAlerts, err = UnmarshalApiAlerts(b)
@@ -113,6 +114,7 @@ func (c *Config) Validate() error {
 		b, err = S3Get(c.Bucket, c.Prefix+"/json/p2p_health.json", c.Region)
 		if err != nil {
 			log.Println("error loading p2p alarm state, creating new: " + err.Error())
+			c.P2pAlerts = &P2pAlerts{}
 			c.P2pAlerts.State = make(map[string]*P2pAlertState)
 		} else {
 			c.P2pAlerts, err = UnmarshalP2pAlerts(b)

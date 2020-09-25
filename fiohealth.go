@@ -12,10 +12,10 @@ import (
 )
 
 type FinalResult struct {
-	Api         []Result    `json:"api"`
-	P2p         []P2pResult `json:"p2p"`
-	Timestamp   string      `json:"timestamp"`
-	Description string      `json:"description"`
+	Api         []*Result    `json:"api"`
+	P2p         []*P2pResult `json:"p2p"`
+	Timestamp   string       `json:"timestamp"`
+	Description string       `json:"description"`
 }
 
 // Result is the output from an API health check

@@ -10,12 +10,12 @@ import (
 	"time"
 )
 
-func CheckP2p(conf *Config) (report []P2pResult) {
+func CheckP2p(conf *Config) (report []*P2pResult) {
 	geo, err := MyGeo(conf.Geolite)
 	if err != nil {
 		log.Println(err)
 	}
-	results := make([]P2pResult, len(conf.P2pNodes))
+	results := make([]*P2pResult, len(conf.P2pNodes))
 	wg := sync.WaitGroup{}
 	wg.Add(len(conf.P2pNodes))
 	for i := range conf.P2pNodes {
@@ -33,7 +33,7 @@ func CheckP2p(conf *Config) (report []P2pResult) {
 	return results
 }
 
-func P2pConnect(p2pnode string, geo string, conf *Config) P2pResult {
+func P2pConnect(p2pnode string, geo string, conf *Config) *P2pResult {
 	started := time.Now().UTC()
 	r := P2pResult{Type: "p2p", Peer: p2pnode, FromGeo: geo, TimeStamp: time.Now().UTC().Unix()}
 	cid, err := hex.DecodeString(conf.ChainId)
@@ -109,5 +109,5 @@ func P2pConnect(p2pnode string, geo string, conf *Config) P2pResult {
 		}
 	}
 	r.Took = time.Now().UTC().Sub(started).Milliseconds() / 1000
-	return r
+	return &r
 }

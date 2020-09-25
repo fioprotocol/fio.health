@@ -3,8 +3,16 @@ package fiohealth
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
+)
+
+type alarmType uint8
+
+const (
+	health alarmType = iota
+	security
 )
 
 // ApiAlertState holds the alarm status for a node
@@ -23,27 +31,31 @@ type ApiAlertState struct {
 // ApiAlerts contains all api alarms, is marshalled and stored to reduce alarm fatigue
 type ApiAlerts struct {
 	State map[string]*ApiAlertState `json:"state"`
-	sync.Mutex
+	sync.RWMutex
 }
 
 // UnmarshalApiAlerts converts from json
-func UnmarshalApiAlerts(b []byte) (ApiAlerts, error) {
-	aa := ApiAlerts{}
+func UnmarshalApiAlerts(b []byte) (*ApiAlerts, error) {
+	aa := &ApiAlerts{}
 	aa.State = make(map[string]*ApiAlertState)
-	err := json.Unmarshal(b, &aa)
+	err := json.Unmarshal(b, aa)
 	return aa, err
 }
 
 // shouldAlarm determines if a new alarm should be generated, should be called *before* updating state.
-func (aa *ApiAlerts) shouldAlarm(host string) bool {
+func (aa *ApiAlerts) shouldAlarm(host string, alarm alarmType) bool {
 	if aa.State[host] == nil || aa.State[host].sendAlarm {
 		return true
 	}
-	if time.Now().Before(aa.State[host].HealthNotBefore) && aa.State[host].HealthAlarm {
-		return false
-	}
-	if aa.State[host].SecurityAlarm && !aa.State[host].HealthAlarm && time.Now().Before(aa.State[host].SecurityNotBefore) {
-		return false
+	switch alarm {
+	case health:
+		if time.Now().UTC().Before(aa.State[host].HealthNotBefore) {
+			return false
+		}
+	case security:
+		if time.Now().UTC().Before(aa.State[host].SecurityNotBefore) {
+			return false
+		}
 	}
 	return true
 }
@@ -89,30 +101,36 @@ func (aa *ApiAlerts) GetAlarms() []string {
 }
 
 // HostFailed saves a failure into alarm state, calls shouldAlarm to mark as needing an alert
-func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity string, suppress int) {
+func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity alarmType, suppress int) {
 	aa.Lock()
 	defer aa.Unlock()
-	nb := time.Now().Add(time.Duration(suppress) * time.Hour)
+	nb := time.Now().UTC().Add(time.Duration(suppress) * time.Hour)
 	if aa.State[host] == nil {
 		aa.State[host] = &ApiAlertState{}
 	}
-	aa.State[host].sendAlarm = aa.shouldAlarm(host)
+	aa.State[host].sendAlarm = aa.shouldAlarm(host, healthOrSecurity)
 	// alert repeatedly on impending TLS expiration
 	if why == "cert expires in 1 days" {
 		aa.State[host].sendAlarm = true
 	}
 	switch healthOrSecurity {
-	case "health":
+	case health:
 		aa.State[host].HealthAlarm = true
 		aa.State[host].HealthNotBefore = nb
+		if strings.Contains(aa.State[host].HealthReason, why) {
+			return
+		}
 		if aa.State[host].HealthReason != "" {
 			aa.State[host].HealthReason = aa.State[host].HealthReason + "; " + why
 			return
 		}
 		aa.State[host].HealthReason = why
-	case "security":
+	case security:
 		aa.State[host].SecurityAlarm = true
 		aa.State[host].SecurityNotBefore = nb
+		if strings.Contains(aa.State[host].SecurityReason, why) {
+			return
+		}
 		if aa.State[host].SecurityReason != "" {
 			aa.State[host].SecurityReason = aa.State[host].SecurityReason + "; " + why
 			return
@@ -145,9 +163,9 @@ type P2pAlerts struct {
 }
 
 // UnmarshalP2pAlerts converts from json
-func UnmarshalP2pAlerts(b []byte) (P2pAlerts, error) {
-	pa := P2pAlerts{}
-	err := json.Unmarshal(b, &pa)
+func UnmarshalP2pAlerts(b []byte) (*P2pAlerts, error) {
+	pa := &P2pAlerts{}
+	err := json.Unmarshal(b, pa)
 	if pa.State == nil {
 		pa.State = make(map[string]*P2pAlertState)
 	}
@@ -159,7 +177,7 @@ func (pa *P2pAlerts) shouldAlarm(host string) bool {
 	if pa.State[host] == nil {
 		return true
 	}
-	if time.Now().Before(pa.State[host].NotBefore) {
+	if time.Now().UTC().Before(pa.State[host].NotBefore) {
 		return false
 	}
 	return true
@@ -185,7 +203,10 @@ func (pa *P2pAlerts) HostFailed(host string, reason string, suppression int) (sh
 	}
 	pa.State[host].sendAlarm = pa.shouldAlarm(host)
 	pa.State[host].Alarm = true
-	pa.State[host].NotBefore = time.Now().Add(time.Duration(suppression) * time.Hour)
+	pa.State[host].NotBefore = time.Now().UTC().Add(time.Duration(suppression) * time.Hour)
+	if strings.Contains(pa.State[host].Reason, reason) {
+		return
+	}
 	if pa.State[host].Reason != "" {
 		pa.State[host].Reason = pa.State[host].Reason + "; " + reason
 		return
