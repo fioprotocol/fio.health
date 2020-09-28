@@ -183,6 +183,14 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
+	// clear old text to prevent duplicate info
+	for k := range c.ApiAlerts.State {
+		c.ApiAlerts.State[k].HealthReason = ""
+		c.ApiAlerts.State[k].SecurityReason = ""
+	}
+	for k := range c.P2pAlerts.State {
+		c.P2pAlerts.State[k].Reason = ""
+	}
 	return nil
 }
 
