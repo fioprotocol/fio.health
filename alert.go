@@ -110,9 +110,9 @@ func (aa *ApiAlerts) HostFailed(host string, why string, healthOrSecurity alarmT
 	}
 	aa.State[host].sendAlarm = aa.shouldAlarm(host, healthOrSecurity)
 	// alert repeatedly on impending TLS expiration
-	if why == "cert expires in 1 days" {
-		aa.State[host].sendAlarm = true
-	}
+	//if why == "cert expires in 1 days" {
+	//	aa.State[host].sendAlarm = true
+	//}
 	switch healthOrSecurity {
 	case health:
 		aa.State[host].HealthAlarm = true

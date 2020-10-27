@@ -80,11 +80,11 @@ func handler() error {
 		switch payload.(type) {
 		case []string:
 			payload = append(payload.([]string), nowStr+".json")
-			if len(payload.([]string)) > 144 {
+			if len(payload.([]string)) > 72 {
 				sort.Slice(payload.([]string), func(i, j int) bool {
 					return payload.([]string)[i] > payload.([]string)[j]
 				})
-				payload = payload.([]string)[:144]
+				payload = payload.([]string)[:72]
 			}
 			sort.Strings(payload.([]string))
 		case []History:
