@@ -3,7 +3,6 @@ package fiohealth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"strings"
 	"sync"
 	"time"
@@ -32,7 +31,7 @@ type ApiAlertState struct {
 // ApiAlerts contains all api alarms, is marshalled and stored to reduce alarm fatigue
 type ApiAlerts struct {
 	State map[string]*ApiAlertState `json:"state"`
-	deadlock.RWMutex
+	sync.RWMutex
 }
 
 // UnmarshalApiAlerts converts from json
