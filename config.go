@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/fioprotocol/fio-go"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -33,6 +34,15 @@ type Config struct {
 	TelegramChannel string     `yaml:"telegram_channel"`
 	BaseUrl         string     `yaml:"base_url"`
 	FlapSuppression int        `yaml:"flap_suppression"` // hours: suppresses flapping service alarms, min 1, default 4
+
+	Debug bool `yaml:"-"`
+}
+
+func (c *Config) Log(v interface{}) {
+	if !c.Debug {
+		return
+	}
+	_ = log.Output(2, fmt.Sprint(v))
 }
 
 func (c *Config) Validate() error {
@@ -69,6 +79,7 @@ func (c *Config) Validate() error {
 		}
 	}
 	if len(formatErrs) > 0 {
+		c.Log(formatErrs)
 		return errors.New(strings.Join(formatErrs, ", "))
 	}
 
@@ -85,6 +96,7 @@ func (c *Config) Validate() error {
 
 	switch strings.HasPrefix(c.OutputDir, "s3://") {
 	case true:
+		c.Log("Configured for s3")
 		parts := strings.Split(c.OutputDir, "/")
 		if len(parts) < 4 {
 			return errors.New("malformed s3 url for output dir")
@@ -96,6 +108,7 @@ func (c *Config) Validate() error {
 		if err != nil {
 			return errors.New("test s3 write: " + err.Error())
 		}
+		c.Log(fmt.Sprintf("S3 write check passed, using: s3://%s/%s (%s)", c.Bucket, c.Prefix, c.Region))
 
 		// get alarm states, or create new
 		b := make([]byte, 0)
@@ -125,10 +138,12 @@ func (c *Config) Validate() error {
 		}
 
 	default:
+		c.Log("using local filesystem for output")
 		f, err := os.OpenFile(c.OutputDir+"/.write_test", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			return errors.New("test output directory write: " + err.Error())
 		}
+		c.Log("write test passed")
 		defer f.Close()
 		_, err = f.WriteString("test")
 		if err != nil {
@@ -156,12 +171,18 @@ func (c *Config) Validate() error {
 				c.ApiAlerts.State = make(map[string]*ApiAlertState)
 			}
 		}
+		if c.ApiAlerts == nil {
+			c.ApiAlerts = &ApiAlerts{}
+		}
 		if c.ApiAlerts.State == nil {
+			c.ApiAlerts.State = make(map[string]*ApiAlertState)
 			err = json.Unmarshal(j, &c.ApiAlerts)
 			if err != nil {
 				log.Println("error loading api alarm state, creating new: " + err.Error())
-				c.ApiAlerts.State = make(map[string]*ApiAlertState)
 			}
+		}
+		if c.P2pAlerts == nil {
+			c.P2pAlerts = &P2pAlerts{}
 		}
 		hf, err = os.Open(c.OutputDir + "/json/p2p_health.json")
 		if err != nil {
@@ -234,6 +255,10 @@ func GetConfig() (*Config, error) {
 	err = yaml.Unmarshal(y, c)
 	if err != nil {
 		return c, err
+	}
+
+	if os.Getenv("DEBUG") == "TRUE" {
+		c.Debug = true
 	}
 
 	if strings.HasPrefix(c.OutputDir, "s3://") && c.Region == "" {

@@ -12,7 +12,16 @@ import (
 // TestTls looks for old TLS versions and weak cipher suites, this is not the standard Go tls library, and it does
 // not attempt to validate the certificate, knowing the settings are weak outside of having an invalid cert are
 // useful findings.
-func TestTls(uri string) (string, bool) {
+func TestTls(uri string, debug bool) (string, bool) {
+	var start time.Time
+	if debug {
+		start = time.Now()
+	}
+	defer func() {
+		if debug && time.Now().Sub(start).Seconds() > 30 {
+			log.Printf("TLS checks for %s took %d seconds", uri, time.Now().Sub(start).Seconds())
+		}
+	}()
 	if !strings.HasPrefix(uri, "https") {
 		return "", false
 	}

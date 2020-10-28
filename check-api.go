@@ -1,14 +1,13 @@
 package fiohealth
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/fioprotocol/fio-go"
 	"log"
 	"math"
-	"net/http"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -18,16 +17,21 @@ import (
 // the negotiated protocol is TLSv1.2 or higher, alarms if certificate expires within 30 days, and ensures that neither
 // the producer and network API is exposed.
 func CheckApis(conf *Config) (report []*Result) {
+
+	done := make(chan interface{})
+	pending := len(conf.ApiNodes)
+	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(time.Minute))
+
 	myIpAddr, err := MyGeo(conf.Geolite)
 	if err != nil {
 		log.Fatal(err)
 	}
-	wg := sync.WaitGroup{}
-	wg.Add(len(conf.ApiNodes))
 	results := make([]*Result, len(conf.ApiNodes))
 	for i, a := range conf.ApiNodes {
 		go func(i int, a string) {
-			defer wg.Done()
+			defer func() {
+				done <-true
+			}()
 			results[i] = &Result{
 				Type:      "api",
 				Node:      a,
@@ -101,7 +105,7 @@ func CheckApis(conf *Config) (report []*Result) {
 
 			notes := make([]string, 0)
 
-			if finding, found := TestTls(api.BaseURL); found {
+			if finding, found := TestTls(api.BaseURL, conf.Debug); found {
 				notes = append(notes, finding)
 				results[i].Score += 1
 			} else if strings.HasPrefix(api.BaseURL, "https") {
@@ -109,7 +113,7 @@ func CheckApis(conf *Config) (report []*Result) {
 			}
 
 			// going to use native http lib here to get access to response headers and TLS info:
-			resp, err := http.Get(api.BaseURL + "/v1/chain/get_producer_schedule")
+			resp, err := api.HttpClient.Get(api.BaseURL + "/v1/chain/get_producer_schedule")
 			if err != nil {
 				log.Println(a, "producer schedule", err.Error())
 				results[i].HadError = true
@@ -188,6 +192,18 @@ func CheckApis(conf *Config) (report []*Result) {
 			}
 		}(i, a)
 	}
-	wg.Wait()
-	return results
+
+	for {
+		select {
+		case <-done:
+			pending -= 1
+			if pending == 0 {
+				conf.Log("all API nodes tested, API check completed")
+				return results
+			}
+		case <-ctx.Done():
+			conf.Log("forcing API check exit, context expired")
+			return results
+		}
+	}
 }

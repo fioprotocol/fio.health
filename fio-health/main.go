@@ -166,6 +166,18 @@ func handler() error {
 		if err != nil {
 			return err
 		}
+		if conf.Debug {
+			for _, check := range final.Api {
+				if !check.HadError && check.Error != "" {
+					log.Printf("healthy api result with error message detected: %+v\n", check)
+				}
+			}
+			for _, check := range final.P2p {
+				if check.Healthy && check.ErrMsg != "" {
+					log.Printf("healthy p2p result with error message detected: %+v\n", check)
+				}
+			}
+		}
 
 		j, err = json.MarshalIndent(combined, "", "  ")
 		if err != nil {
