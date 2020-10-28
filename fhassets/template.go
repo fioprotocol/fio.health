@@ -77,7 +77,11 @@ const Report = `<!DOCTYPE html>
           <th scope="row" class="align-middle">{{.Node}}</th>
           <th scope="row" {{if .WrongVersion}}class="align-middle text-warning"{{else}}class="align-middle"{{end}}>{{.NodeVer}}</th>
           <td class="align-middle">{{if .HadError}}<img src="tri.svg" alt="failed" width="28" height="28">{{else}}<img src="check.svg" alt="ok" width="28" height="28">{{end}}</td>
-          <td class="text-info" style="max-width: 250px;"><div class="d-inline-block overflow-auto" style="max-width: 245px;max-height: 40px;">{{.Error}}</div></td>
+          <td class="text-info" style="max-width: 250px;"><div class="d-inline-block overflow-hidden" style="max-width: 245px;max-height: 40px;" >
+          <span data-toggle="tooltip" delay="0" trigger="hover focus" placement="right" title="{{.Error}}">
+              {{.Error}}
+          </span>
+          </div></td>
           <td {{if gt .RequestLatency 2000}}class="align-middle text-warning"{{else}}class="align-middle"{{end}}>
             <div aria-hidden="true" >
               <button type="button" class="chart-button btn btn-outline-dark" hidden onClick="graphLatency('{{.Node}}')">
@@ -96,7 +100,11 @@ const Report = `<!DOCTYPE html>
           </td>
           <td class="align-middle">{{if .PermissiveCors}}<img src="check.svg" alt="ok" width="28" height="28">{{else}}<img src="tri.svg" alt="failed" width="28" height="28">{{end}}</td>
           <td class="align-middle">{{ if not .TlsVerOk}}<img src="slash.svg" alt="failed" width="28" height="28">{{else if not .TlsCipherOk}}<img src="slash.svg" alt="failed" width="28" height="28">{{else}}<img src="check.svg" alt="ok" width="28" height="28">{{end}}</td>
-          <td class="align-middle" style="max-width: 250px;"><div class="d-inline-block overflow-auto" style="max-width: 245px;max-height: 40px;">{{.TlsNote}}</div></td>
+          <td class="align-middle" style="max-width: 250px;"><div class="d-inline-block overflow-hidden" style="max-width: 245px;max-height: 40px;">
+          <span data-toggle="tooltip" delay="0" trigger="hover focus" placement="right" title="{{.TlsNote}}">
+              {{.TlsNote}}
+          </span>
+          </div></td>
           <td class="text-center align-middle">{{if .ProducerExposed}}<img src="exc.svg" alt="failed" width="28" height="28">{{else if .NetExposed}}<img src="exc.svg" alt="failed" width="28" height="28">{{end}}</td>
           <td>{{.FromGeo}}</td>
         </tr>
@@ -122,7 +130,11 @@ const Report = `<!DOCTYPE html>
           <th scope="row">{{.Peer}}</th>
           <td>{{if .Reachable}}<img src="check.svg" alt="ok" width="28" height="28">{{else}}<img src="tri.svg" alt="failed" width="28" height="28">{{end}}</td>
           <td>{{if .Healthy}}<img src="check.svg" alt="ok" width="28" height="28">{{else}}<img src="tri.svg" alt="failed" width="28" height="28">{{end}}</td>
-          <td class="text-info" style="max-width: 250px;"><div class="d-inline-block overflow-auto" style="max-width: 245px;max-height: 40px;">{{.ErrMsg}}</div></td>
+          <td class="text-info" style="max-width: 250px;"><div class="d-inline-block overflow-hidden" style="max-width: 245px;max-height: 40px;">
+          <span href="#" data-toggle="tooltip" delay="0" title="{{.ErrMsg}}">
+              {{.ErrMsg}}
+          </span>
+          </div></td>
           <td>{{if .Healthy}}{{.HeadBlockLatency}}{{end}}</td>
           <td>{{.FromGeo}}</td>
         </tr>
@@ -164,6 +176,9 @@ const Report = `<!DOCTYPE html>
     window.onload = function() {
       previous()
     };
+    $(document).ready(function(){
+      $('[data-toggle="tooltip"]').tooltip(); 
+    });
   </script>
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
