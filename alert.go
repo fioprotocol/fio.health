@@ -3,6 +3,7 @@ package fiohealth
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"strings"
 	"sync"
 	"time"
@@ -31,7 +32,7 @@ type ApiAlertState struct {
 // ApiAlerts contains all api alarms, is marshalled and stored to reduce alarm fatigue
 type ApiAlerts struct {
 	State map[string]*ApiAlertState `json:"state"`
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 // UnmarshalApiAlerts converts from json
@@ -198,6 +199,9 @@ func (pa *P2pAlerts) HostOk(host string) {
 func (pa *P2pAlerts) HostFailed(host string, reason string, suppression int) (shouldAlert bool) {
 	pa.Lock()
 	defer pa.Unlock()
+	if pa.State == nil {
+		pa.State = make(map[string]*P2pAlertState)
+	}
 	if pa.State[host] == nil {
 		pa.State[host] = &P2pAlertState{}
 	}
