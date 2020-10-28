@@ -8,12 +8,15 @@ const Report = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>FIO {{.Description}} Health</title>
   <link rel="stylesheet" href="bootstrap.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.18.0/dist/bootstrap-table.min.css">
   <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/dist/echarts.js"></script>
   <style type="text/css">
     html {
       scroll-behavior: smooth;
     }
   </style>
+  <script>
+  </script>
 </head>
 <body>
 <div class="container-fluid">
@@ -21,7 +24,7 @@ const Report = `<!DOCTYPE html>
     <h1>{{.Description}} Health</h1>
     <div><br /></div>
     <div class="text-info">Last run: {{.Timestamp}}</div>
-    <div  aria-hidden="true" id="history-button" hidden>
+    <div id="history-button">
       <br />
       <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#historyModal">
         Previous Reports
@@ -55,15 +58,17 @@ const Report = `<!DOCTYPE html>
 
     <div><br /></div>
       <h2>API</h2>
-      <table class="table table-striped table-sm table-hover">
+      <table onChange="removeButtons" class="table table-striped table-sm table-hover table-borderless" data-toggle="table" data-search="true" data-custom-sort="customSort">
         <thead class="thead-dark">
           <tr>
             <th scope="col">Host</th>
             <th scope="col">Version</th>
             <th scope="col">Healthy</th>
             <th scope="col">Errors</th>
-            <th scope="col">Response (ms)</th>
-            <th scope="col">Headblock Lag (ms)</th>
+            <th scope="col"></th>
+            <th scope="col" data-sortable="true">Response (ms)</th>
+            <th scope="col"></th>
+            <th scope="col" data-sortable="true">Headblock Lag (ms)</th>
             <th scope="col">CORS</th>
             <th scope="col">Strong TLS</th>
             <th scope="col">TLS Info</th>
@@ -82,19 +87,26 @@ const Report = `<!DOCTYPE html>
               {{.Error}}
           </span>
           </div></td>
-          <td {{if gt .RequestLatency 2000}}class="align-middle text-warning"{{else}}class="align-middle"{{end}}>
-            <div aria-hidden="true" >
-              <button type="button" class="chart-button btn btn-outline-dark" hidden onClick="graphLatency('{{.Node}}')">
+          <td class="align-middle">
+            <div>
+              <button type="button" class="chart-button btn btn-outline-dark" onClick="graphLatency('{{.Node}}')">
                 <img src="chart.svg" alt="view latency chart" class="align-middle" width="20" height="20">
               </button>
+             </div>
+          </td>
+          <td {{if gt .RequestLatency 2000}}class="align-middle text-warning"{{else}}class="align-middle"{{end}}>
+            <div>
 			  {{.RequestLatency}} 
              </div>
            </td>
-          <td {{if gt .HeadBlockLatency 30000 }} class="text-warning align-middle"{{else}} class="align-middle"{{end}}>
-            <div aria-hidden="true" >
-              <button type="button" class="chart-button btn btn-outline-dark" hidden onClick="graphLatency('{{.Node}}', 'lag')">
+          <td class="align-middle">
+            <div>
+              <button type="button" class="chart-button btn btn-outline-dark" onClick="graphLatency('{{.Node}}', 'lag')">
                 <img src="chart.svg" alt="view latency chart" class="align-middle" width="20" height="20">
               </button>
+             </div>
+          </td>
+          <td {{if gt .HeadBlockLatency 30000 }} class="text-warning align-middle"{{else}} class="align-middle"{{end}}>
               {{.HeadBlockLatency}}
              </div>
           </td>
@@ -111,9 +123,9 @@ const Report = `<!DOCTYPE html>
         {{ end }}
         </tbody>
       </table>
-
+    <br />
     <h2>P2P</h2>
-      <table class="table table-striped table-sm table-hover">
+      <table class="table table-striped table-sm table-hover table-borderless" data-toggle="table" data-search="true" data-custom-sort="customSort">
         <thead class="thead-dark">
         <tr>
           <th scope="col">Host</th>
@@ -144,9 +156,22 @@ const Report = `<!DOCTYPE html>
   </div>
   </div>
   <script>
+    let showingButtons = false
+    const removeButtons = function() {
+      if (showingButtons) {
+        return
+      }
+      //document.getElementById("history-button").hidden = true;
+      document.getElementById("history-button").remove();
+      for (let b of document.getElementsByClassName("chart-button")){
+        //b.hidden = true;
+        b.remove();
+      }
+    }
     const previous = async function() {
       let response = await fetch("history/index.json");
       if (response.ok) {
+        showingButtons = true;
         let json = await response.json();
         if (json.length === 0) {
           return
@@ -166,23 +191,42 @@ const Report = `<!DOCTYPE html>
         }
         innerContent += "</ul>\n";
         document.getElementById("history").insertAdjacentHTML("afterend", innerContent);
-        document.getElementById("history-button").hidden = false;
-        for (let b of document.getElementsByClassName("chart-button")){
-          b.hidden = false;
-        }
+      } else {
+        removeButtons();
       }
     };
-    
     window.onload = function() {
       previous()
     };
-    $(document).ready(function(){
-      $('[data-toggle="tooltip"]').tooltip(); 
-    });
+    function extractContent(s) {
+      let span = document.createElement('span');
+      span.innerHTML = s;
+      return span.textContent || span.innerText;
+    }
+    function customSort(sortName, sortOrder, data) {
+      let order = sortOrder === 'desc' ? -1 : 1
+      data.sort(function (a, b) {
+        let aa = parseInt(extractContent(a[sortName]).replace(/[^\d]/g, ''));
+        let bb = parseInt(extractContent(b[sortName]).replace(/[^\d]/g, ''));
+        if (aa < bb) {
+          return order * -1
+        }
+        if (aa > bb) {
+          return order
+        }
+        return 0
+      }
+    );
+    }
   </script>
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/bootstrap-table@1.18.0/dist/bootstrap-table.min.js"></script>
   <script src="chartv2.js"></script>
+
+  <script>
+  
+  </script>
 </body>
 </html>`
