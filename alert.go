@@ -92,7 +92,7 @@ func (aa *ApiAlerts) GetAlarms() []string {
 			if v.HealthAlarm {
 				alarms = append(alarms, fmt.Sprintf("Health warning: %s - %s", k, v.HealthReason))
 			}
-			if v.SecurityAlarm {
+			if v.SecurityAlarm && !v.HealthAlarm {
 				alarms = append(alarms, fmt.Sprintf("Security warning: %s - %s", k, v.SecurityReason))
 			}
 		}
